@@ -1,44 +1,57 @@
-name: Build and Deploy
+# .github/workflows/deploy.yml
+name: Build and Deploy (User Site)
 
+# Run on pushes to main (change branch name if yours is different)
 on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: read      # allow checkout
+  pages: write        # allow Pages deployment
+  id-token: write     # not strictly needed here but useful for some actions
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
-      - name: Setup Node
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 18
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '18'
+          cache: 'npm'
 
-      - name: Install
+      - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Build production bundle
         run: npm run build
+        env:
+          NODE_ENV: production
 
-      - name: Determine publish directory
+      - name: SPA 404 fix
+        # copy index to 404 so GitHub Pages serves SPA routes
         run: |
-          if [ -d "./dist" ]; then
-            echo "PUBLISH_DIR=dist" >> $GITHUB_ENV
-          elif [ -d "./build" ]; then
-            echo "PUBLISH_DIR=build" >> $GITHUB_ENV
+          if [ -f build/index.html ]; then
+            cp build/index.html build/404.html
           else
-            echo "No dist/ or build/ folder found." >&2
-            exit 1
+            echo "build/index.html not found; skipping 404 copy"
           fi
-
-      - name: Create SPA 404
-        run: |
-          cp "${{ env.PUBLISH_DIR }}/index.html" "${{ env.PUBLISH_DIR }}/404.html"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ${{ env.PUBLISH_DIR }}
+          # this must match your build output folder
+          publish_dir: build
+          # optional: set a custom target branch (gh-pages is default). If you want gh-pages branch:
+          # publish_branch: gh-pages
+
+      - name: Complete
+        run: echo "Deployment step finished"
