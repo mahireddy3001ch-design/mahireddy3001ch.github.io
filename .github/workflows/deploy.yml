@@ -5,9 +5,8 @@ on:
     branches: [ main ]
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,11 +22,23 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: SPA 404 fix
-        run: cp build/index.html build/404.html
+      - name: Determine publish directory
+        run: |
+          if [ -d "./dist" ]; then
+            echo "PUBLISH_DIR=dist" >> $GITHUB_ENV
+          elif [ -d "./build" ]; then
+            echo "PUBLISH_DIR=build" >> $GITHUB_ENV
+          else
+            echo "No dist/ or build/ folder found." >&2
+            exit 1
+          fi
+
+      - name: Create SPA 404
+        run: |
+          cp "${{ env.PUBLISH_DIR }}/index.html" "${{ env.PUBLISH_DIR }}/404.html"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: build
+          publish_dir: ${{ env.PUBLISH_DIR }}
