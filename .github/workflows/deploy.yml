@@ -7,6 +7,7 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,15 +23,11 @@ jobs:
       - name: Build production bundle
         run: npm run build
 
-      # if your build output folder is "build" (as in your screenshots)
       - name: SPA 404 fix
-        run: |
-          # ensure index exists and copy to 404 for GitHub Pages single-page app
-          if [ -f build/index.html ]; then cp build/index.html build/404.html; fi
+        run: if [ -f build/index.html ]; then cp build/index.html build/404.html; fi
 
       - name: Deploy to GitHub Pages (PAT)
-        # option A: use default GITHUB_TOKEN (works when repo Actions permissions allow write)
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.DEPLOY_TOKEN }
+          github_token: ${{ secrets.DEPLOY_TOKEN }}
           publish_dir: build
